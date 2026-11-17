@@ -1,0 +1,15 @@
+aws_region                     = "eu-central-1"
+project_name                   = "ecommerce-order"
+environment                    = "dev"
+lambda_memory_mb               = 256
+lambda_timeout_seconds         = 10
+sqs_visibility_timeout_seconds = 60
+sqs_message_retention_seconds  = 345600
+dlq_message_retention_seconds  = 1209600
+sqs_max_receive_count          = 3
+lambda_batch_size              = 10
+log_retention_days             = 14
+
+# Leave empty to skip the email subscription.
+# An address here still requires the recipient to confirm the subscription.
+sns_email_endpoint = ""

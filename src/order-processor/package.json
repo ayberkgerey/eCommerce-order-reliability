@@ -1,0 +1,13 @@
+{
+  "name": "order-processor",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Validates queued ecommerce orders and publishes accepted orders to SNS.",
+  "main": "index.js",
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "@aws-sdk/client-sns": "^3.700.0"
+  }
+}

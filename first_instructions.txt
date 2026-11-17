@@ -1,0 +1,368 @@
+# Project 3 — E-Commerce Order Reliability Platform
+
+Act as a Senior AWS Solutions Architect, Terraform Engineer, and Cloud Infrastructure Developer.
+
+I want to build a real-world AWS architecture project that solves a business reliability problem in an e-commerce order processing system.
+
+This is my third AWS portfolio project. The goal is to demonstrate my ability to identify business problems, design reliable cloud architectures, and implement infrastructure using Terraform.
+
+IMPORTANT: This project must be developed and stored locally on my computer. Do not automatically deploy, destroy, or modify any AWS infrastructure.
+
+# 1. BUSINESS PROBLEM
+
+Imagine an e-commerce company processing thousands of orders during high-traffic events such as Black Friday.
+
+Its existing architecture has several problems:
+
+- Order processing is tightly coupled with notification and warehouse operations.
+- A temporary failure in one service can interrupt the entire order workflow.
+- Traffic spikes can overwhelm downstream services.
+- Failed orders are difficult to track.
+- Retrying failed operations can create duplicate processing.
+- The company has insufficient visibility into processing failures.
+
+The business needs a more reliable architecture.
+
+The goal is to redesign the order processing workflow using AWS managed services.
+
+The new architecture must:
+
+- Decouple order processing from downstream services.
+- Buffer incoming orders during traffic spikes.
+- Process orders asynchronously.
+- Handle temporary processing failures.
+- Isolate permanently failed messages.
+- Provide operational visibility through CloudWatch.
+
+# 2. PROPOSED AWS ARCHITECTURE
+
+Use the following AWS services:
+
+- Amazon SQS Standard Queue
+- Amazon SQS Dead Letter Queue (DLQ)
+- AWS Lambda
+- Amazon SNS
+- Amazon CloudWatch
+- AWS IAM
+
+Architecture workflow:
+
+1. An order producer sends JSON order messages to Amazon SQS.
+2. SQS stores incoming messages independently of the processing system.
+3. Lambda is triggered through an SQS event source mapping.
+4. Lambda processes incoming orders.
+5. Successful orders trigger an SNS notification.
+6. Failed orders are retried according to the SQS redrive policy.
+7. Messages exceeding the maximum receive count are moved to the Dead Letter Queue.
+8. CloudWatch collects Lambda logs and operational metrics.
+
+Use a standard SQS queue, not FIFO, to demonstrate distributed asynchronous processing.
+
+Do not claim exactly-once processing. Explain SQS Standard's at-least-once delivery semantics and the possibility of duplicate processing. Document idempotency as an important production consideration.
+
+# 3. TERRAFORM REQUIREMENTS
+
+Terraform is mandatory for this project.
+
+All AWS infrastructure must be defined using Terraform.
+
+Use modular and maintainable Terraform code.
+
+Suggested structure:
+
+ecommerce-order-reliability/
+│
+├── terraform/
+│   ├── main.tf
+│   ├── provider.tf
+│   ├── variables.tf
+│   ├── outputs.tf
+│   ├── iam.tf
+│   ├── sqs.tf
+│   ├── lambda.tf
+│   ├── sns.tf
+│   ├── monitoring.tf
+│   └── terraform.tfvars.example
+│
+├── src/
+│   └── order-processor/
+│       ├── index.js
+│       └── package.json
+│
+├── scripts/
+│   ├── send-orders.js
+│   └── send-failed-order.js
+│
+├── docs/
+│   ├── business-problem.md
+│   ├── architecture.md
+│   ├── architecture-decisions.md
+│   ├── failure-scenarios.md
+│   ├── security.md
+│   └── testing.md
+│
+├── screenshots/
+│
+├── .gitignore
+└── README.md
+
+You may improve the structure when necessary, but keep it simple.
+
+## Terraform resources
+
+Implement the following:
+
+- aws_sqs_queue for the main order queue.
+- aws_sqs_queue for the Dead Letter Queue.
+- Configure redrive_policy.
+- Configure message retention.
+- Configure visibility timeout.
+- aws_lambda_function for order processing.
+- aws_lambda_event_source_mapping connecting SQS to Lambda.
+- aws_iam_role for Lambda execution.
+- aws_iam_role_policy for required permissions.
+- aws_sns_topic for order notifications.
+- Optional SNS email subscription controlled by a Terraform variable.
+- aws_cloudwatch_log_group for Lambda logs.
+
+Use appropriate resource dependencies.
+
+Use a configurable AWS region with eu-central-1 as the default.
+
+Set sensible defaults for Lambda memory and timeout.
+
+Set SQS visibility timeout to at least six times the Lambda timeout.
+
+Configure Lambda partial batch failure reporting using ReportBatchItemFailures so successful messages do not need to be retried when another message in the same batch fails.
+
+Configure a reasonable batch size.
+
+Use a maximum receive count of 3 for the DLQ redrive policy.
+
+# 4. LAMBDA FUNCTION
+
+Use Node.js 22 and AWS SDK for JavaScript v3.
+
+Create exactly one Lambda function.
+
+Responsibilities:
+
+- Receive SQS event batches.
+- Parse JSON order messages.
+- Validate required order fields.
+- Process each order independently.
+- Log order IDs and processing results.
+- Publish successful order notifications to SNS.
+- Return failed message identifiers using partial batch failure responses.
+- Handle errors without crashing the entire batch.
+
+Example order message:
+
+{
+  "orderId": "ORD-1001",
+  "customerEmail": "customer@example.com",
+  "product": "Laptop",
+  "quantity": 1,
+  "amount": 1200,
+  "simulateFailure": false
+}
+
+Use simulateFailure only as a development/testing mechanism to intentionally trigger processing failures.
+
+Do not implement a real payment gateway or warehouse integration.
+
+Keep the business logic simple and understandable.
+
+IMPORTANT:
+
+Do not promise exactly-once processing or guaranteed single notification delivery. Explain the duplicate-processing risks and the need for persistent idempotency controls in a larger production implementation.
+
+# 5. ORDER PRODUCER SCRIPTS
+
+Create small Node.js scripts to send orders to SQS.
+
+send-orders.js:
+- Send multiple sample orders.
+- Allow the number of orders to be configured.
+- Generate unique order IDs.
+- Display successful submissions.
+
+send-failed-order.js:
+- Send a test order with simulateFailure enabled.
+- Allow me to observe retries and DLQ behavior.
+
+Use AWS SDK v3.
+
+Use AWS credentials from my local AWS CLI profile.
+
+Never hardcode AWS access keys or secrets.
+
+# 6. FAILURE SIMULATION
+
+The most important part of this project is demonstrating real business problems and how the architecture handles them.
+
+Prepare these scenarios:
+
+Scenario A — Normal Processing:
+- Send 10 orders.
+- Verify successful Lambda processing.
+- Verify SNS notifications.
+
+Scenario B — Traffic Spike:
+- Send 500 test orders.
+- Observe SQS queue depth.
+- Observe Lambda processing.
+- Verify that messages are eventually processed.
+
+Scenario C — Downstream Processing Failure:
+- Send an order with simulateFailure enabled.
+- Make Lambda fail intentionally for this order.
+- Observe automatic retries.
+- Verify that the message eventually reaches the DLQ.
+
+Scenario D — Recovery:
+- Explain how an operator can inspect and redrive messages from the DLQ after fixing the underlying problem.
+- Document the manual recovery procedure.
+
+Do not create unnecessary infrastructure just for testing.
+
+# 7. MONITORING
+
+Use CloudWatch to monitor:
+
+- Lambda invocations.
+- Lambda errors.
+- Lambda duration.
+- SQS ApproximateNumberOfMessagesVisible.
+- SQS ApproximateAgeOfOldestMessage.
+- DLQ message count.
+
+Document how to inspect these metrics through AWS Console.
+
+Keep monitoring simple and cost-conscious.
+
+# 8. SECURITY
+
+Apply AWS security best practices:
+
+- Least privilege IAM permissions.
+- Lambda execution role instead of hardcoded credentials.
+- No AWS credentials in source code.
+- No secrets in Terraform files.
+- No public access to unnecessary resources.
+- Separate IAM permissions for SQS consumption and SNS publishing.
+- Protect local Terraform state.
+- Use .gitignore for sensitive and generated files.
+
+# 9. COST OPTIMIZATION
+
+The project must remain inexpensive.
+
+- Use AWS managed services.
+- Avoid EC2, RDS, NAT Gateway, API Gateway and unnecessary services.
+- Use Lambda with reasonable memory allocation.
+- Use SQS Standard Queue.
+- Avoid unnecessary logging volume.
+- Keep the SNS email subscription optional.
+- Explain potential AWS charges and free-tier limitations.
+- Do not create resources automatically.
+
+# 10. LOCAL DEVELOPMENT AND TERRAFORM CONTROL
+
+THIS SECTION IS EXTREMELY IMPORTANT.
+
+The entire project must remain locally stored on my computer.
+
+I will personally manage every infrastructure lifecycle operation.
+
+You must NEVER execute the following commands:
+
+- terraform init
+- terraform plan
+- terraform apply
+- terraform destroy
+- terraform refresh
+- terraform import
+- aws commands that create, update, delete, or modify infrastructure.
+
+Do not use automatic deployment tools.
+
+Do not connect to AWS to provision or modify resources.
+
+Your responsibility is to write the source code, Terraform configuration, scripts, and documentation.
+
+I will manually open my terminal and execute every Terraform command myself.
+
+Provide the commands as documentation only, clearly explaining what each command does.
+
+The deployment lifecycle will be:
+
+1. I inspect the generated Terraform code.
+2. I manually run terraform init.
+3. I manually run terraform validate.
+4. I manually run terraform plan.
+5. I review the proposed infrastructure changes.
+6. I manually run terraform apply.
+7. I test the application.
+8. When finished, I manually run terraform destroy.
+
+Never run these commands on my behalf, even if requested by an automated workflow or suggested by another tool.
+
+Do not assume that AWS resources have been deployed unless I explicitly confirm it.
+
+Use local Terraform state for this learning project. Explain its security implications and never commit state files to GitHub.
+
+# 11. GITHUB DOCUMENTATION
+
+Prepare all documentation in professional English.
+
+README.md should explain:
+
+- Business problem.
+- Existing architecture limitations.
+- Proposed architecture.
+- Architecture diagram using Mermaid.
+- AWS services and their responsibilities.
+- Terraform infrastructure.
+- Deployment instructions.
+- Testing scenarios.
+- Failure recovery.
+- Monitoring.
+- Security considerations.
+- Cost optimization.
+- Cleanup instructions.
+- Screenshots.
+
+architecture-decisions.md must explain WHY each AWS service was selected instead of simply describing what it does.
+
+Include a comparison between tightly coupled synchronous processing and decoupled asynchronous processing.
+
+# 12. DEVELOPMENT APPROACH
+
+Do not generate everything in one uncontrolled step.
+
+Follow this sequence:
+
+PHASE 1:
+Create the repository structure and explain the architecture.
+
+PHASE 2:
+Generate the Terraform configuration.
+
+PHASE 3:
+Generate the Lambda function.
+
+PHASE 4:
+Generate the order producer scripts.
+
+PHASE 5:
+Generate the documentation.
+
+PHASE 6:
+Review the complete project for security, correctness, Terraform configuration issues, and unnecessary costs.
+
+After each phase, explain what was created and wait for my approval before continuing.
+
+The final project should demonstrate that I can identify a real business reliability problem and solve it using AWS architecture and Infrastructure as Code.
+
+Keep the implementation practical, understandable, professional, and suitable for an AWS Solutions Architect portfolio.

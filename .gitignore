@@ -1,0 +1,26 @@
+# Local Terraform state and working files. Never commit these.
+.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# May contain an email address or other local settings.
+terraform.tfvars
+*.auto.tfvars
+*.auto.tfvars.json
+
+# Generated Lambda deployment package.
+terraform/build/
+
+# Node dependencies installed only to run the local producer scripts.
+node_modules/
+npm-debug.log*
+
+# Editor and OS files.
+.DS_Store
+.idea/
